@@ -1,0 +1,5 @@
+Ring Dimension,Bit Error Rate,Perfect Correction Rate,Successful Decoding Rate
+1024,0.487358,0.0000,0.0000
+2048,0.499623,0.0000,0.0000
+4096,0.488868,0.0000,0.0000
+8192,0.492075,0.0000,0.0000
