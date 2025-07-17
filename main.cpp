@@ -6,9 +6,9 @@
 #include "bch/bch.h"
 
 constexpr long CKKS_N = 8192;
-constexpr double DELTA = (double)(1ULL << 40);
-constexpr int TRIALS = 10000;
-constexpr double NOISE_LEVEL = 3.3e5;
+constexpr double DELTA = 1000.0;  // Reduced from 2^40 to avoid overflow
+constexpr int TRIALS = 1000;      // Reduced for faster testing
+constexpr double NOISE_LEVEL = 800.0;  // Much higher noise to show error correction
 
 std::vector<uint8_t> random_message(size_t k) {
     static std::random_device rd;
@@ -22,7 +22,7 @@ std::vector<uint8_t> random_message(size_t k) {
 std::vector<double> bits_to_slots(const std::vector<uint8_t>& bits) {
     std::vector<double> slots(bits.size());
     for (size_t i = 0; i < bits.size(); ++i)
-        slots[i] = bits[i] ? DELTA/2 : -DELTA/2;
+        slots[i] = bits[i] ? DELTA : -DELTA;
     return slots;
 }
 
@@ -45,55 +45,89 @@ int main() {
     int success = 0;
     std::vector<int> bit_error_hist(10, 0);
 
-    // HElib CKKS context setup
+    // HElib CKKS context setup with more conservative parameters
     helib::Context context = helib::ContextBuilder<helib::CKKS>()
         .m(CKKS_N)
         .bits(119)
-        .precision(40)
+        .precision(20)  // Reduced precision
         .build();
+    
+    // Generate keys
     helib::SecKey secret_key(context);
     secret_key.GenSecKey();
+    helib::addSome1DMatrices(secret_key);  // Add key switching matrices
     const helib::PubKey& public_key = secret_key;
-    helib::EncryptedArrayCx ea(context);
+
+    std::cout << "Running BCH-CKKS experiment with " << TRIALS << " trials..." << std::endl;
+    std::cout << "BCH parameters: n=" << BCH::n << ", k=" << BCH::k << ", t=" << BCH::t << std::endl;
 
     for (int trial = 0; trial < TRIALS; ++trial) {
-        // 1. Generate random message
-        auto msg = random_message(BCH::k);
-        // 2. BCH encode
-        auto codeword = bch.encode(msg);
-        // 3. Map to CKKS slots
-        auto slots = bits_to_slots(codeword);
-        // 4. CKKS encode/encrypt
-        helib::PtxtArray ptxt(context, slots);
-        helib::Ctxt ctxt(public_key);
-        ptxt.encrypt(ctxt);
-        // 5. Decrypt
-        helib::PtxtArray decrypted(context);
-        decrypted.decrypt(ctxt, secret_key);
-        std::vector<double> decrypted_slots;
-        decrypted.store(decrypted_slots);
-        // 6. Add noise (simulate CKKS error)
-        add_noise(decrypted_slots);
-        // 7. Quantize
-        auto recovered_bits = slots_to_bits(decrypted_slots);
-        // 8. Count bit errors before BCH decode
-        int bit_errors = 0;
-        for (size_t i = 0; i < codeword.size(); ++i)
-            if (recovered_bits[i] != codeword[i]) ++bit_errors;
-        if (bit_errors >= (int)bit_error_hist.size())
-            bit_error_hist.resize(bit_errors+1, 0);
-        bit_error_hist[bit_errors]++;
-        // 9. BCH decode
-        std::vector<uint8_t> decoded;
-        bool ok = bch.decode(recovered_bits, decoded);
-        if (ok && decoded == msg) success++;
+        if (trial % 100 == 0) {
+            std::cout << "Progress: " << trial << "/" << TRIALS << std::endl;
+        }
+        
+        try {
+            // 1. Generate random message
+            auto msg = random_message(BCH::k);
+            
+            // 2. BCH encode
+            auto codeword = bch.encode(msg);
+            
+            // 3. Map to CKKS slots (only use first 127 slots)
+            auto slots = bits_to_slots(codeword);
+            
+            // 4. CKKS encode/encrypt
+            helib::PtxtArray ptxt(context, slots);
+            helib::Ctxt ctxt(public_key);
+            ptxt.encrypt(ctxt);
+            
+            // 5. Decrypt
+            helib::PtxtArray decrypted(context);
+            decrypted.decrypt(ctxt, secret_key);
+            std::vector<double> decrypted_slots;
+            decrypted.store(decrypted_slots);
+            
+            // 6. Add noise (simulate CKKS error)
+            add_noise(decrypted_slots);
+            
+            // 7. Quantize
+            auto recovered_bits = slots_to_bits(decrypted_slots);
+            
+            // 8. Count bit errors before BCH decode
+            int bit_errors = 0;
+            for (size_t i = 0; i < codeword.size() && i < recovered_bits.size(); ++i)
+                if (recovered_bits[i] != codeword[i]) ++bit_errors;
+            
+            if (bit_errors >= (int)bit_error_hist.size())
+                bit_error_hist.resize(bit_errors+1, 0);
+            bit_error_hist[bit_errors]++;
+            
+            // 9. BCH decode
+            std::vector<uint8_t> decoded;
+            bool ok = bch.decode(recovered_bits, decoded);
+            if (ok && decoded == msg) success++;
+            
+            // Print some debug info for first few trials
+            if (trial < 5) {
+                std::cout << "Trial " << trial << ": bit_errors=" << bit_errors 
+                          << ", decode_ok=" << ok << ", success=" << (ok && decoded == msg) << std::endl;
+            }
+            
+        } catch (const std::exception& e) {
+            std::cout << "Error in trial " << trial << ": " << e.what() << std::endl;
+            continue;
+        }
     }
-    std::cout << "Success rate: " << (double)success / TRIALS << std::endl;
+    
+    std::cout << "\n=== Results ===" << std::endl;
+    std::cout << "Success rate: " << (double)success / TRIALS * 100 << "%" << std::endl;
+    std::cout << "Successful decodings: " << success << "/" << TRIALS << std::endl;
     std::cout << "Bit error histogram: ";
     for (size_t i = 0; i < bit_error_hist.size(); ++i) {
         if (bit_error_hist[i] > 0)
             std::cout << i << ":" << bit_error_hist[i] << " ";
     }
     std::cout << std::endl;
+    
     return 0;
 }

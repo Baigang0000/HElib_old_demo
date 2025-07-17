@@ -8,3 +8,5 @@ include_directories(${CMAKE_SOURCE_DIR}/bch)
 
 add_executable(bch_ckks_experiment main.cpp bch/bch.cpp)
 target_link_libraries(bch_ckks_experiment helib)
+
+add_executable(test_bch test_bch.cpp bch/bch.cpp)
