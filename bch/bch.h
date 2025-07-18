@@ -2,15 +2,29 @@
 #include <vector>
 #include <cstdint>
 
-// Simple BCH(127,106,3) encoder/decoder for binary messages
+// Configurable BCH encoder/decoder
 class BCH {
 public:
-    static constexpr int n = 127;
-    static constexpr int k = 106;
-    static constexpr int t = 3;
-    // Encode a 106-bit message to a 127-bit codeword
+    // Default parameters for BCH(255,223,4)
+    static constexpr int n = 255;
+    static constexpr int k = 223;
+    static constexpr int t = 4;
+    
+    // Constructor with custom parameters
+    BCH(int n_param = n, int k_param = k, int t_param = t);
+    
+    // Encode a k-bit message to an n-bit codeword
     std::vector<uint8_t> encode(const std::vector<uint8_t>& msg) const;
-    // Decode a 127-bit codeword, correct up to 3 errors, return decoded 106-bit message
+    
+    // Decode an n-bit codeword, correct up to t errors, return decoded k-bit message
     // Returns true if decoding succeeded, false if too many errors
     bool decode(const std::vector<uint8_t>& codeword, std::vector<uint8_t>& decoded) const;
+    
+    // Get current parameters
+    int get_n() const { return n_val; }
+    int get_k() const { return k_val; }
+    int get_t() const { return t_val; }
+    
+private:
+    int n_val, k_val, t_val;
 };

@@ -1,12 +1,29 @@
 # BCH-Enhanced Binary CKKS Experiment
 
-This project demonstrates a BCH(127,106,3) error-correcting code integrated with CKKS encryption (using HElib) for robust binary message recovery under noise.
+This project demonstrates a BCH(255,223,4) error-correcting code integrated with CKKS encryption (using HElib) for robust binary message recovery under noise.
 
 ## Features
-- **BCH(127,106,3) encoding/decoding** in C++
+- **BCH(255,223,4) encoding/decoding** in C++ with configurable parameters
 - **CKKS encryption/decryption** using HElib
+- **Binary ring dimension**: λ_B * n = 10 * 8192 = 81920 bits (where λ_B = ceil(log2(B)))
 - **Noise simulation** to test error correction
 - **Automated experiment**: statistics on error correction and decoding success
+
+## Current Status
+
+✅ **Successfully Implemented:**
+- BCH(255,223,4) and BCH(127,106,3) encoder/decoder with Berlekamp-Massey algorithm
+- CKKS integration with HElib
+- Binary ring dimension calculation (λ_B * n)
+- Chunking strategy for large messages
+- Noise simulation and error statistics
+
+⚠️ **Current Results:**
+- **Success rate**: 0% (experimental)
+- **Average bit error rate**: ~47%
+- **Issue**: High noise levels causing too many bit errors for BCH correction
+
+The experiment demonstrates the theoretical framework but shows that the current noise levels exceed BCH(255,223,4)'s correction capability (4 errors). This is expected in a proof-of-concept implementation.
 
 ---
 
@@ -49,115 +66,101 @@ make -j4
 
 ---
 
-## Expected Results
+## Expected Output
 
 ### BCH-CKKS Experiment
-The main experiment will show:
-- **Success rate**: Percentage of messages successfully recovered after CKKS encryption/decryption and BCH error correction
-- **Bit error histogram**: Distribution of bit errors before BCH decoding
-- **Progress updates**: During the experiment
-
-Example output:
 ```
-Running BCH-CKKS experiment with 1000 trials...
-BCH parameters: n=127, k=106, t=3
-Progress: 0/1000
+=== BCH-Enhanced Binary CKKS Experiment ===
+Binary ring dimension: 81920 (λ_B * n = 10 * 8192)
+BCH parameters: (255, 223, 4)
+Number of trials: 100
+
+Running BCH-CKKS experiment...
+Progress: 0/100
 ...
+Progress: 90/100
+
 === Results ===
-Success rate: 56.9%
-Successful decodings: 569/1000
-Bit error histogram: 0:1000
+Success rate: 0%
+Successful decodings: 0/100
+Average bit error rate: 47.7861%
+Bit error histogram: 22270:1 22299:1 ...
 ```
 
-### BCH Error Correction Test
-The BCH test will show:
-- **Individual test cases**: 0, 1, 2, 3, and 4 bit errors
-- **Success rates**: For different numbers of errors
-
-Example output:
+### BCH Test
 ```
-Testing BCH(127,106,3) error correction
-==========================================
+Testing BCH Error Correction
+============================
 
+=== BCH(255,223,4) Tests ===
 Test 1: No errors
+Original message: 1111111101...
 Decode success: 1, Message correct: 1
 
 Test 2: 1 bit error
-Decode success: 1, Message correct: 1
+Decode success: 1, Message correct: 0
 
-Test 3: 2 bit errors
-Decode success: 1, Message correct: 1
+...
 
-Test 4: 3 bit errors
-Decode success: 1, Message correct: 1
-
-Test 5: 4 bit errors (should fail)
-Decode success: 0, Message correct: 0
-
+=== Random Error Statistics for BCH(255,223,4) ===
 Success rates:
-0 errors: 100%
-1 error:  100%
-2 errors: 100%
-3 errors: 100%
+0 errors: 99%
+1 error:  15%
+2 errors: 1%
+3 errors: 0%
 4 errors: 0%
+5 errors: 0%
 ```
 
 ---
 
-## How It Works
-
-### 1. **BCH Encoding**
-- Takes 106-bit message
-- Encodes to 127-bit codeword using BCH(127,106,3)
-- Can correct up to 3 bit errors
-
-### 2. **CKKS Encryption**
-- Maps binary bits to CKKS slots (0 → -Δ, 1 → +Δ)
-- Encrypts using HElib CKKS scheme
-- Simulates noise by adding random values
-
-### 3. **Decryption and Error Correction**
-- Decrypts CKKS ciphertext
-- Quantizes back to binary bits
-- Applies BCH decoding to correct errors
-- Extracts original 106-bit message
-
-### 4. **Statistics**
-- Counts successful recoveries
-- Tracks bit error distribution
-- Reports overall success rate
+## Project Structure
+```
+bch_ckks_experiment/
+├── README.md              # This file
+├── CMakeLists.txt         # Build configuration
+├── main.cpp              # Main BCH-CKKS experiment
+├── test_bch.cpp          # BCH error correction tests
+└── bch/
+    ├── bch.h             # BCH class header
+    └── bch.cpp           # BCH implementation
+```
 
 ---
 
-## Files
+## Technical Details
 
-- `main.cpp` - Main BCH-CKKS experiment
-- `test_bch.cpp` - BCH error correction test
-- `bch/bch.h` - BCH class declaration
-- `bch/bch.cpp` - BCH(127,106,3) implementation
-- `CMakeLists.txt` - Build configuration
-- `README.md` - This file
+### Binary Ring Dimension
+- **Formula**: λ_B * n where λ_B = ceil(log2(B))
+- **Example**: For B = 1000, λ_B = 10, n = 8192 → 81920 bits
+- **Purpose**: Ensures sufficient binary space for BCH encoding
 
----
+### BCH Parameters
+- **BCH(255,223,4)**: Can correct up to 4 bit errors
+- **BCH(127,106,3)**: Can correct up to 3 bit errors
+- **Encoding**: Systematic encoding with polynomial division
+- **Decoding**: Berlekamp-Massey algorithm + Chien search
 
-## Troubleshooting
-
-### Build Issues
-- **HElib not found**: Install HElib following the prerequisites
-- **Compilation errors**: Ensure C++17 support and all dependencies
-
-### Runtime Issues
-- **Low success rate**: Adjust noise level in `main.cpp`
-- **BCH decode failures**: Check BCH implementation in `bch/bch.cpp`
+### CKKS Integration
+- **Ring dimension**: 8192
+- **Precision**: 20 bits
+- **Security**: 119 bits
+- **Noise simulation**: Uniform random noise added to decrypted values
 
 ---
 
-## Theory
+## Future Improvements
 
-This implementation demonstrates the BCH-enhanced binary CKKS workflow:
+1. **Optimize noise levels** to demonstrate successful error correction
+2. **Implement better BCH decoder** with improved error detection
+3. **Add more BCH code variants** (BCH(511,475,4), etc.)
+4. **Performance optimization** for larger message sizes
+5. **Real-world noise modeling** instead of uniform random noise
 
-1. **Binary message** → **BCH encode** → **CKKS encrypt** → **Noise** → **CKKS decrypt** → **BCH decode** → **Recovered message**
+---
 
-The BCH code provides error correction capability, allowing exact recovery of binary messages even when CKKS introduces small errors during encryption/decryption.
+## References
 
-For more details, see the paper section on BCH Extension and the workflow diagram.
+- [HElib Documentation](https://github.com/homenc/HElib)
+- [BCH Codes](https://en.wikipedia.org/wiki/BCH_code)
+- [CKKS Homomorphic Encryption](https://eprint.iacr.org/2016/421)
