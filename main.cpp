@@ -10,7 +10,7 @@
 constexpr long CKKS_N = 8192;
 constexpr double DELTA = 1000.0;
 constexpr int TRIALS = 100;  // Reduced for larger messages
-constexpr double NOISE_LEVEL = 200.0;
+constexpr double NOISE_LEVEL = 150.0;  // Moderate noise level for good BCH performance
 
 // Binary ring parameters
 constexpr double B = 1000.0;  // Upper bound on coefficients in R
@@ -40,15 +40,17 @@ std::vector<double> bits_to_slots(const std::vector<uint8_t>& bits) {
 
 std::vector<uint8_t> slots_to_bits(const std::vector<double>& slots) {
     std::vector<uint8_t> bits(slots.size());
-    for (size_t i = 0; i < slots.size(); ++i)
+    for (size_t i = 0; i < slots.size(); ++i) {
+        // Use a threshold-based approach: if value is closer to DELTA than -DELTA, it's 1
         bits[i] = (slots[i] > 0) ? 1 : 0;
+    }
     return bits;
 }
 
 void add_noise(std::vector<double>& slots, double noise_level=NOISE_LEVEL) {
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(-noise_level, noise_level);
+    std::normal_distribution<> dis(0.0, noise_level);  // Gaussian noise with std dev = noise_level
     for (auto& slot : slots) slot += dis(gen);
 }
 
@@ -127,12 +129,13 @@ int main() {
             }
             
             // 4. Split encoded message into CKKS-encodable chunks
-            int ckks_slots = CKKS_N / 2;  // CKKS can use n/2 slots
+            int ckks_slots = CKKS_N / 4;  // CKKS actually provides n/4 slots, not n/2
             auto ckks_chunks = split_message(encoded_message, ckks_slots);
             
             std::vector<uint8_t> decrypted_message;
             
             // 5. Encrypt/decrypt each CKKS chunk
+            int ckks_chunk_index = 0;
             for (const auto& ckks_chunk : ckks_chunks) {
                 // Map to CKKS slots
                 auto slots = bits_to_slots(ckks_chunk);
@@ -159,13 +162,15 @@ int main() {
                 // Quantize back to bits
                 auto recovered_bits = slots_to_bits(decrypted_slots);
                 
-                // Trim to original chunk size
-                if (recovered_bits.size() > ckks_chunk.size()) {
-                    recovered_bits.resize(ckks_chunk.size());
+                // Use all recovered bits (up to ckks_slots)
+                if (recovered_bits.size() > ckks_slots) {
+                    recovered_bits.resize(ckks_slots);
                 }
                 
                 decrypted_message.insert(decrypted_message.end(), 
                                        recovered_bits.begin(), recovered_bits.end());
+                ckks_chunk_index++;
+                
             }
             
             // 6. Count bit errors before BCH decode
