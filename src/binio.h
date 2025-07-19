@@ -96,10 +96,7 @@ struct SerializeHeader
   // 32 bit number: 8 bits for major, minor, patch, fix
   const std::array<char, 4> version = Binio::VERSION_0_0_1_0;
   // The helib version that output this header.
-  const std::array<char, 4> helibVersion = {version::major,
-                                            version::minor,
-                                            version::patch,
-                                            0};
+  const std::array<char, 4> helibVersion = {'1', '0', '0', '0'};
   // ObjectType
   char structId = nameToStructId<T>();
   // Reserved for future use

@@ -14,7 +14,7 @@
 
 using namespace std;
 using namespace NTL;
-
+namespace BinaryCKKS {
 /**
  * Simplified Binary Polynomial Ring Element
  * Represents polynomials in Z_2[x]/(x^n + 1)
@@ -184,5 +184,5 @@ namespace SimpleBinaryCKKSUtils {
     template<typename T>
     void printVector(const vector<T>& vec, const string& name, int max_elements = 8);
 }
-
+}
 #endif // SIMPLE_BINARY_CKKS_H

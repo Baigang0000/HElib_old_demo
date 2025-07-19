@@ -5,7 +5,7 @@
 
 using namespace std;
 using namespace std::chrono;
-
+namespace BinaryCKKS {
 SimpleBinaryPoly::SimpleBinaryPoly(long ring_dim) : n(ring_dim) {
     coeffs.resize(n, 0);
 }
@@ -526,5 +526,5 @@ void benchmarkOperations() {
     
     cout << "Benchmark completed!\n" << endl;
 }
-
+}
 } // namespace SimpleBinaryCKKSUtils

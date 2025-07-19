@@ -77,3 +77,14 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+# build artefacts
+build/
+benchmarks/build/
+results/
+
+# virtual‑envs
+.venv/
+
+# editor / OS cruft
+*.swp
+.DS_Store

@@ -161,7 +161,7 @@ template <typename T>
 static inline json toTypedJson(const json& tc)
 {
   return {{"type", T::typeName},
-          {"HElibVersion", version::asString},
+          {"HElibVersion", "1.0.0"},
           {"serializationVersion", jsonSerializationVersion},
           {"content", tc}};
 }
@@ -178,9 +178,9 @@ static inline json fromTypedJson(const json& j)
   }
 
   std::string obj_helib_ver = j.at("HElibVersion").get<std::string>();
-  if (obj_helib_ver != version::asString) {
+  if (obj_helib_ver != "1.0.0") {
     std::stringstream sstr;
-    sstr << "HElib version mismatch.  Expected: " << version::asString
+    sstr << "HElib version mismatch.  Expected: " << "1.0.0"
          << " actual: " << obj_helib_ver;
     throw IOError(sstr.str());
   }
